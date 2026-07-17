@@ -1,6 +1,6 @@
 # LegalFlow Miniapp
 
-免费开源的法务案件与合规协同移动端，覆盖案件挂号、签到、候诊、办理状态、健康档案和复诊任务。演示数据均为虚构，不涉及诊断、处方、支付或真实当事人隐私。
+免费开源的法务案件与合规协同移动端，覆盖案件创建、立案、办理状态、当事人档案和合规任务。演示数据均为虚构，不涉及支付或真实当事人隐私。
 
 ## 本地运行
 
@@ -21,7 +21,7 @@ VITE_API_PROXY_TARGET=http://localhost:8088 npm run dev
 
 - 案件：`GET/POST /api/v1/appointments`
 - 签到：`POST /api/v1/appointments/:id/checkin`
-- 状态流转：`POST /api/v1/appointments/:id/status`，支持“已签到→候诊中→办理中→已完成”
+- 状态流转：`POST /api/v1/appointments/:id/status`，支持“已立案→待办理→办理中→已结案”
 - 合规：`GET/POST /api/v1/followups`、`POST /api/v1/followups/:id/complete`
 
 接口不可用或返回错误时，移动端会保留并继续展示内置演示数据，同时标记当前数据来源，方便离线预览。
