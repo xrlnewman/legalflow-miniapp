@@ -96,3 +96,24 @@ test('非零响应会抛错，调用方可以保留演示数据', async () => {
 
   await assert.rejects(() => client.updateAppointmentStatus('LG-1', '待办理'), /状态不可推进/)
 })
+
+test('案件协同客户端覆盖案件、任务、文档元数据和结案摘要', async () => {
+  const calls = []
+  const client = createApiClient({ fetchImpl: async (url, init) => { calls.push({ url, init }); return response({ id: 'LF-1', status: '协同中' }) } })
+  await client.listMatters({ status: '协同中' })
+  await client.getMatter('LF-1')
+  await client.listMatterEvents('LF-1')
+  await client.assignMatter('LF-1', { assignee: '林律师', actor: '当事人端' })
+  await client.updateMatterStatus('LF-1', '待结案', '林律师')
+  await client.addMatterFile('LF-1', { name: '证据.pdf', kind: 'evidence', checksum: 'sha256:mobile-1' })
+  await client.closeMatter('LF-1', { result: '结案摘要已确认', actor: '当事人端' })
+  assert.deepEqual(calls.map(({ url }) => url), [
+    '/api/v1/matters?status=%E5%8D%8F%E5%90%8C%E4%B8%AD',
+    '/api/v1/matters/LF-1',
+    '/api/v1/matters/LF-1/events',
+    '/api/v1/matters/LF-1/assign',
+    '/api/v1/matters/LF-1/status',
+    '/api/v1/matters/LF-1/file',
+    '/api/v1/matters/LF-1/close',
+  ])
+})

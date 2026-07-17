@@ -1,4 +1,5 @@
 import './styles.css'
+import './matters.css'
 
 import { createApiClient } from './api.js'
 
@@ -15,8 +16,16 @@ const demoFollowups = [
   { id: 'LG-0715-006', patientId: 'LG-001', patient: '案卷 C079', summary: '庭审材料校对', dueAt: '明天 10:00', status: '待完成' },
 ]
 
+const demoMatters = [
+  { id: 'LF-0720-003', subjectAlias: '演示案卷-003', caseType: '知识产权', priority: '高', deadline: '2026-07-23', assignee: '赵律师', status: '待结案', documents: [{ name: '证据目录.pdf', kind: 'evidence', checksum: 'sha256:demo-003' }], tasks: [{ title: '结案文书复核', assignee: '赵律师', status: '待处理' }], events: [{ action: '创建案件', actor: '系统', createdAt: '2026-07-16 09:00', toStatus: '待委托' }, { action: '归档文档', actor: '赵律师', createdAt: '2026-07-16 14:20' }] },
+  { id: 'LF-0720-002', subjectAlias: '演示案卷-002', caseType: '劳动争议', priority: '中', deadline: '2026-07-22', assignee: '沈律师', status: '协同中', documents: [], tasks: [{ title: '证据清单核验', assignee: '沈律师', status: '待处理' }], events: [] },
+  { id: 'LF-0720-004', subjectAlias: '演示案卷-004', caseType: '合同审查', priority: '低', deadline: '2026-07-24', assignee: '', status: '待委托', documents: [], tasks: [], events: [] },
+]
+
 let appointments = [...demoAppointments]
 let followups = [...demoFollowups]
+let matters = [...demoMatters]
+const matterEventsById = new Map(matters.map((item) => [item.id, item.events || []]))
 let dataSource = '演示数据'
 const busyActions = new Set()
 
@@ -80,6 +89,12 @@ function renderFollowup(followup) {
   </article>`
 }
 
+function renderMatter(matter) {
+  const events = matterEventsById.get(matter.id) || matter.events || []
+  const action = matter.status === '待结案' ? `<button class="visit-action" data-action="close-matter" data-id="${escapeHtml(matter.id)}">提交结案摘要　→</button>` : matter.status === '待委托' ? `<button class="visit-action" data-action="assign-matter" data-id="${escapeHtml(matter.id)}">领取协同任务　→</button>` : `<button class="visit-action" data-action="add-matter-file" data-id="${escapeHtml(matter.id)}">上传文档元数据　→</button>`
+  return `<article class="matter-card"><div class="visit-top"><span class="tag ${statusClass(matter.status)}">${escapeHtml(matter.status)}</span><span>截止日期 ${escapeHtml(matter.deadline)}</span></div><h4>${escapeHtml(matter.subjectAlias)}</h4><p>${escapeHtml(matter.caseType)} · ${escapeHtml(matter.priority)}优先级 · ${escapeHtml(matter.assignee || '待分配')}</p><div class="matter-card__meta"><span>${(matter.tasks || []).length} 个任务</span><span>${(matter.documents || []).length} 份文档</span></div>${(matter.tasks || []).map((task) => `<div class="matter-task-mini"><b>✓</b><span>${escapeHtml(task.title)} · ${escapeHtml(task.assignee)}</span></div>`).join('')}${(matter.documents || []).map((doc) => `<div class="matter-doc-mini"><b>▧</b><span>${escapeHtml(doc.name)} · ${escapeHtml(doc.checksum)}</span></div>`).join('')}${events.slice(-2).map((event) => `<div class="matter-event-mini"><i></i><span>${escapeHtml(event.action)} · ${escapeHtml(event.actor)} · ${escapeHtml(event.createdAt)}</span></div>`).join('')}${action}</article>`
+}
+
 function render() {
   app.innerHTML = `<main class="app">
     <header>
@@ -96,6 +111,8 @@ function render() {
     <section class="visits">${appointments.length ? appointments.map(renderAppointment).join('') : '<div class="empty">暂时没有案件，点击上方新建一条</div>'}</section>
     <div class="section-head"><h3>合规任务 <small class="coral">${followups.filter((item) => item.status !== '已完成').length} 条待办</small></h3><a data-action="refresh">查看 →</a></div>
     <section class="reminders">${followups.length ? followups.slice(0, 3).map(renderFollowup).join('') : '<div class="empty">暂无合规任务</div>'}</section>
+    <div class="section-head"><h3>案件协同 <small>${matters.length} 个</small></h3><a data-action="refresh">同步 →</a></div>
+    <section class="matters-mobile">${matters.length ? matters.map(renderMatter).join('') : '<div class="empty">暂无案件协同</div>'}</section>
     <nav><button class="active">⌂<small>首页</small></button><button data-action="create-appointment">＋<small>案件</small></button><button data-action="refresh">◷<small>办理</small></button><button data-action="create-followup">♡<small>我的</small></button></nav>
     <div class="toast" hidden></div>
   </main>`
@@ -138,6 +155,7 @@ async function refreshFromApi() {
   const results = await Promise.allSettled([
     api.listAppointments({ page: 1, pageSize: 20 }),
     api.listFollowups({ page: 1, pageSize: 20 }),
+    api.listMatters({ page: 1, pageSize: 20 }),
   ])
   let synced = 0
   const appointmentsResult = results[0]
@@ -150,9 +168,29 @@ async function refreshFromApi() {
     followups = followupsResult.value.list
     synced += 1
   }
+  const mattersResult = results[2]
+  if (mattersResult.status === 'fulfilled' && Array.isArray(mattersResult.value?.list)) {
+    matters = mattersResult.value.list
+    for (const matter of matters) { if (!matterEventsById.has(matter.id)) matterEventsById.set(matter.id, matter.events || []) }
+    synced += 1
+  }
   dataSource = synced ? '接口数据' : '演示数据'
   render()
   showToast(synced ? '已同步最新案件与合规' : '服务暂不可用，继续使用演示数据')
+}
+
+async function refreshMatterEvents(id) {
+  try { const response = await api.listMatterEvents(id); matterEventsById.set(id, response?.list || []); const matter = matters.find((item) => item.id === id); if (matter) matter.events = response?.list || []; render() } catch { /* 保留演示时间线 */ }
+}
+
+async function matterAction(id, action) {
+  const matter = matters.find((item) => item.id === id); if (!matter) return
+  try {
+    if (action === 'assign-matter') { const result = await api.assignMatter(id, { assignee: '林律师', actor: '当事人端' }); matters = matters.map((item) => item.id === id ? { ...item, ...result.matter, tasks: result.task ? [result.task] : item.tasks } : item) }
+    if (action === 'add-matter-file') { await api.addMatterFile(id, { name: '协同记录.pdf', kind: 'collaboration', checksum: `sha256:${id}` }); const detail = await api.getMatter(id); matters = matters.map((item) => item.id === id ? detail : item) }
+    if (action === 'close-matter') { const result = await api.closeMatter(id, { result: '结案摘要已确认', actor: '当事人端' }); matters = matters.map((item) => item.id === id ? { ...item, ...result.matter } : item) }
+    dataSource = '接口数据'; await refreshMatterEvents(id); showToast('案件协同已更新')
+  } catch { showToast('接口暂不可用，请稍后重试') }
 }
 
 async function createAppointment() {
@@ -238,6 +276,7 @@ async function handleAction(action, id) {
     if (action === 'create-followup') await createFollowup()
     if (['checkin', 'waiting', 'serving', 'complete-appointment'].includes(action)) await transitionAppointment(id, action)
     if (action === 'complete-followup') await completeFollowup(id)
+    if (['assign-matter', 'add-matter-file', 'close-matter'].includes(action)) await matterAction(id, action)
   } finally {
     busyActions.delete(key)
   }
