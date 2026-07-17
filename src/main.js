@@ -5,14 +5,14 @@ import { createApiClient } from './api.js'
 const api = createApiClient()
 
 const demoAppointments = [
-  { id: 'AP-0716-082', patientId: 'PT-001', patient: '许汝林', department: '全科门诊', doctor: '林律师', scheduledAt: '今天 09:30', status: '待签到' },
-  { id: 'AP-0716-079', patientId: 'PT-001', patient: '许汝林', department: '皮肤科', doctor: '沈律师', scheduledAt: '今天 14:00', status: '候诊中' },
-  { id: 'AP-0715-031', patientId: 'PT-001', patient: '许汝林', department: '康复理疗', doctor: '赵律师', scheduledAt: '07/23 10:30', status: '已完成' },
+  { id: 'LG-0716-082', patientId: 'LG-001', patient: '案卷 C082 · 上海某公司', department: '合同纠纷', doctor: '林律师', scheduledAt: '今天 09:30', status: '待立案' },
+  { id: 'LG-0716-079', patientId: 'LG-001', patient: '案卷 C079 · 李某', department: '劳动争议', doctor: '沈律师', scheduledAt: '今天 14:00', status: '待办理' },
+  { id: 'LG-0715-031', patientId: 'LG-001', patient: '案卷 C031 · 星河科技', department: '知识产权', doctor: '赵律师', scheduledAt: '07/23 10:30', status: '已结案' },
 ]
 
 const demoFollowups = [
-  { id: 'FW-0716-014', patientId: 'PT-001', patient: '许汝林', summary: '记录康复训练完成情况', dueAt: '今天 18:00', status: '待完成' },
-  { id: 'FW-0715-006', patientId: 'PT-001', patient: '许汝林', summary: '确认皮肤护理后的恢复感受', dueAt: '明天 10:00', status: '待完成' },
+  { id: 'LG-0716-014', patientId: 'LG-001', patient: '案卷 C082', summary: '证据清单与举证期限', dueAt: '今天 18:00', status: '待完成' },
+  { id: 'LG-0715-006', patientId: 'LG-001', patient: '案卷 C079', summary: '庭审材料校对', dueAt: '明天 10:00', status: '待完成' },
 ]
 
 let appointments = [...demoAppointments]
@@ -33,9 +33,9 @@ function escapeHtml(value) {
 
 function statusClass(status) {
   if (status === '已完成') return 'green'
-  if (status === '候诊中' || status === '办理中') return 'indigo'
-  if (status === '已签到') return 'blue'
-  if (status === '已取消') return 'muted'
+  if (status === '待办理' || status === '办理中') return 'indigo'
+  if (status === '已立案') return 'blue'
+  if (status === '已撤案') return 'muted'
   return 'coral'
 }
 
@@ -49,10 +49,10 @@ function displayTime(value) {
 
 function appointmentAction(status) {
   switch (status) {
-    case '待签到': return { action: 'checkin', label: '立即签到' }
-    case '已签到': return { action: 'waiting', label: '进入候诊' }
-    case '候诊中': return { action: 'serving', label: '开始办理' }
-    case '办理中': return { action: 'complete-appointment', label: '完成办理' }
+    case '待立案': return { action: 'checkin', label: '提交立案' }
+    case '已立案': return { action: 'waiting', label: '进入办理' }
+    case '待办理': return { action: 'serving', label: '开始办理' }
+    case '办理中': return { action: 'complete-appointment', label: '提交结案' }
     default: return null
   }
 }
@@ -83,20 +83,20 @@ function renderFollowup(followup) {
 function render() {
   app.innerHTML = `<main class="app">
     <header>
-      <div><p>LEGALFLOW / 2026</p><h1>把健康交给<br><b>值得信赖的人</b></h1></div>
+      <div><p>LEGALFLOW / 2026</p><h1>把案件交给<br><b>值得信赖的律师</b></h1></div>
       <div class="header-side"><span class="source-badge">${dataSource}</span><span class="avatar">许</span></div>
     </header>
-    <section class="hero"><span>案件工作台</span><h2>今天也要好好照顾自己</h2><p>案件 · 候诊 · 合规<br>每一步都有清晰提醒</p><div class="sun">✚</div></section>
+    <section class="hero"><span>案件工作台</span><h2>今天也要稳步推进</h2><p>立案 · 办理 · 合规<br>每一步都有清晰提醒</p><div class="sun">✚</div></section>
     <section class="quick">
-      <button data-action="create-appointment"><b>＋</b><span>案件挂号</span></button>
-      <button data-action="refresh"><b>◷</b><span>刷新候诊</span></button>
+      <button data-action="create-appointment"><b>＋</b><span>新建案件</span></button>
+      <button data-action="refresh"><b>◷</b><span>刷新案件队列</span></button>
       <button data-action="create-followup"><b>♡</b><span>新建合规</span></button>
     </section>
     <div class="section-head"><h3>我的案件 <small>${appointments.length} 条</small></h3><a data-action="refresh">同步 →</a></div>
-    <section class="visits">${appointments.length ? appointments.map(renderAppointment).join('') : '<div class="empty">暂时没有案件，点击上方案件挂号创建一条</div>'}</section>
+    <section class="visits">${appointments.length ? appointments.map(renderAppointment).join('') : '<div class="empty">暂时没有案件，点击上方新建一条</div>'}</section>
     <div class="section-head"><h3>合规任务 <small class="coral">${followups.filter((item) => item.status !== '已完成').length} 条待办</small></h3><a data-action="refresh">查看 →</a></div>
     <section class="reminders">${followups.length ? followups.slice(0, 3).map(renderFollowup).join('') : '<div class="empty">暂无合规任务</div>'}</section>
-    <nav><button class="active">⌂<small>首页</small></button><button data-action="create-appointment">＋<small>案件</small></button><button data-action="refresh">◷<small>候诊</small></button><button data-action="create-followup">♡<small>我的</small></button></nav>
+    <nav><button class="active">⌂<small>首页</small></button><button data-action="create-appointment">＋<small>案件</small></button><button data-action="refresh">◷<small>办理</small></button><button data-action="create-followup">♡<small>我的</small></button></nav>
     <div class="toast" hidden></div>
   </main>`
   bindActions()
@@ -121,16 +121,16 @@ function updateFollowup(id, updater) {
 
 function localAppointment() {
   return {
-    id: `AP-DEMO-${Date.now().toString().slice(-6)}`,
-    patientId: 'PT-001', patient: '许汝林', department: '全科门诊', doctor: '林律师',
-    scheduledAt: '明天 09:30', status: '待签到',
+    id: `LG-DEMO-${Date.now().toString().slice(-6)}`,
+    patientId: 'LG-001', patient: '案卷 C001 · 演示企业', department: '合同纠纷', doctor: '林律师',
+    scheduledAt: '明天 09:30', status: '待立案',
   }
 }
 
 function localFollowup() {
   return {
-    id: `FW-DEMO-${Date.now().toString().slice(-6)}`,
-    patientId: 'PT-001', patient: '许汝林', summary: '记录本次服务后的恢复感受', dueAt: '明天 18:00', status: '待完成',
+    id: `LG-TASK-${Date.now().toString().slice(-6)}`,
+    patientId: 'LG-001', patient: '案卷 C001 · 演示企业', summary: '证据清单与举证期限', dueAt: '明天 18:00', status: '待完成',
   }
 }
 
@@ -157,7 +157,7 @@ async function refreshFromApi() {
 
 async function createAppointment() {
   const input = {
-    patientId: 'PT-001', patient: '许汝林', department: '全科门诊', doctor: '林律师',
+    patientId: 'LG-001', patient: '案卷 C001 · 演示企业', department: '合同纠纷', doctor: '林律师',
     scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
   }
   try {
@@ -175,7 +175,7 @@ async function createAppointment() {
 }
 
 async function createFollowup() {
-  const input = { patientId: 'PT-001', patient: '许汝林', summary: '记录本次服务后的恢复感受', dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }
+  const input = { patientId: 'LG-001', patient: '案卷 C001 · 演示企业', summary: '证据清单与举证期限', dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }
   try {
     const created = await api.createFollowup(input)
     followups = [created, ...followups]
@@ -193,7 +193,7 @@ async function createFollowup() {
 async function transitionAppointment(id, action) {
   const current = appointments.find((item) => item.id === id)
   if (!current) return
-  const statusByAction = { waiting: '候诊中', serving: '办理中', 'complete-appointment': '已完成' }
+  const statusByAction = { waiting: '待办理', serving: '办理中', 'complete-appointment': '已结案' }
   try {
     const updated = action === 'checkin'
       ? await api.checkinAppointment(id)
@@ -201,9 +201,9 @@ async function transitionAppointment(id, action) {
     updateAppointment(id, () => updated)
     dataSource = '接口数据'
     render()
-    showToast(action === 'checkin' ? '签到成功，已进入候诊队列' : `状态已更新为${updated.status}`)
+    showToast(action === 'checkin' ? '立案成功，已进入办理队列' : `状态已更新为${updated.status}`)
   } catch {
-    const fallbackStatus = action === 'checkin' ? '已签到' : statusByAction[action]
+    const fallbackStatus = action === 'checkin' ? '已立案' : statusByAction[action]
     updateAppointment(id, (item) => ({ ...item, status: fallbackStatus }))
     dataSource = '演示数据'
     render()
