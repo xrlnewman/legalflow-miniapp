@@ -1,6 +1,6 @@
 # LegalFlow Miniapp
 
-免费开源的法务案件与合规协同移动端，覆盖案件创建、立案、办理状态、当事人档案和合规任务。演示数据均为虚构，不涉及支付或真实当事人隐私。
+法务案件与合规协同移动端，覆盖案件创建、立案、办理状态、当事人档案和合规任务。演示数据均为虚构，不涉及支付或真实当事人隐私。
 
 ## 本地运行
 
@@ -15,7 +15,7 @@ npm run dev
 VITE_API_PROXY_TARGET=http://localhost:8088 npm run dev
 ```
 
-## API 闭环
+## API 与状态同步
 
 页面默认请求 `/api/v1`，生产环境可通过 `VITE_API_BASE_URL` 指向独立的 LegalFlow API 服务。所有写操作会自动生成 `Idempotency-Key`，避免重复案件、重复签到和重复完成合规。
 
