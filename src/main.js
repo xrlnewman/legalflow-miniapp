@@ -172,6 +172,18 @@ async function refreshFromApi() {
   if (mattersResult.status === 'fulfilled' && Array.isArray(mattersResult.value?.list)) {
     matters = mattersResult.value.list
     for (const matter of matters) { if (!matterEventsById.has(matter.id)) matterEventsById.set(matter.id, matter.events || []) }
+    const eventResults = await Promise.allSettled(matters.map((matter) => api.listMatterEvents(matter.id)))
+    eventResults.forEach((result, index) => {
+      const matter = matters[index]
+      if (result.status === 'fulfilled') {
+        const events = result.value?.list || []
+        matterEventsById.set(matter.id, events)
+        matter.events = events
+      } else {
+        matterEventsById.delete(matter.id)
+        matter.events = []
+      }
+    })
     synced += 1
   }
   dataSource = synced ? '接口数据' : '演示数据'
@@ -180,7 +192,7 @@ async function refreshFromApi() {
 }
 
 async function refreshMatterEvents(id) {
-  try { const response = await api.listMatterEvents(id); matterEventsById.set(id, response?.list || []); const matter = matters.find((item) => item.id === id); if (matter) matter.events = response?.list || []; render() } catch { /* 保留演示时间线 */ }
+  try { const response = await api.listMatterEvents(id); matterEventsById.set(id, response?.list || []); const matter = matters.find((item) => item.id === id); if (matter) matter.events = response?.list || []; render() } catch { matterEventsById.delete(id); const matter = matters.find((item) => item.id === id); if (matter) matter.events = []; render() }
 }
 
 async function matterAction(id, action) {
